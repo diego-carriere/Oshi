@@ -1,4 +1,5 @@
 #define SDL_MAIN_USE_CALLBACKS
+
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
 #include <GLEW/glew.h>
@@ -8,25 +9,38 @@
 #include <string>
 #include <sstream>
 
-static void parseShader(const std::string& filePath) 
+struct ShaderSource {
+    std::string vertex;
+    std::string fragment;
+};
+
+static ShaderSource parseShader(const std::string& filePath) 
 {
     std::ifstream stream(filePath);
 
-    enum 
+    enum class ShaderType {
+        NONE = -1, VERTEX = 0, FRAGMENT = 1
+    };
 
     std::string line;
     std::stringstream ss[2];
+    ShaderType type = ShaderType::NONE;
+
     while(getline(stream, line)) 
     {
-        if (line.find('#shader') != std::string::npos)
+        if (line.find("#shader") != std::string::npos)
         {
-            if(line.find('vertex') != std::string::npos) 
-                //do something about vertex shader
-            else if(line.find('fragment') != std::string::npos)
-                //do something about fragment shader
+            if(line.find("vertex") != std::string::npos) 
+                type = ShaderType::VERTEX;
+            else if(line.find("fragment") != std::string::npos)
+                type = ShaderType::FRAGMENT;
         }
-
+        else {
+            ss[(int)type] << line << '\n';
+        }
     }
+
+    return { ss[((int)ShaderType::VERTEX)].str(), ss[((int)ShaderType::FRAGMENT)].str()};
 }
 
 
@@ -52,7 +66,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     }
 
     //trouver a quoi correspondent les flags similaires
-    window = SDL_CreateWindow("OpenGL avec SDL3", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+    window = SDL_CreateWindow("OpenGL avec SDL3", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*|  SDL_WINDOW_FULLSCREEN */);
     if (!window) {
         SDL_Log("Erreur de création de la fenêtre : %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -113,9 +127,14 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
 }
 
 int shaderSetup() {
+
+    ShaderSource shaderSource = parseShader("/resources/shaders/basic.shader");
+    std::cout << shaderSource.vertex << "\n" << shaderSource.fragment;
+
+/* 
     //vertex shader
     unsigned int vertexShaderId = glCreateShader(GL_VERTEX_SHADER); //creating an empty vertex shader
-    glShaderSource(vertexShaderId, 1, &vertexShaderSource, NULL); //attach source to the vertexShader object
+    glShaderSource(vertexShaderId, 1, &(shaderSource.vertex), NULL); //attach source to the vertexShader object
 
     //compilation vertex shader
     glCompileShader(vertexShaderId);
@@ -131,7 +150,7 @@ int shaderSetup() {
 
     //fragment shader
     unsigned int fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShaderId, 1, &fragmentShaderSource, NULL);
+    glShaderSource(fragmentShaderId, 1, &(shaderSource.fragment), NULL);
 
     glCompileShader(fragmentShaderId);
 
@@ -159,6 +178,8 @@ int shaderSetup() {
 
     glDeleteShader(vertexShaderId); //So we can now delete the shaders
     glDeleteShader(fragmentShaderId);
+ */
+    return GL_SUCCESS_NV;
 }
 
 int rectangleSetup() {
